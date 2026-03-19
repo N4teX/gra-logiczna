@@ -135,19 +135,19 @@
         }
 
         /* Aktywne style dla zakładek / poziomów */
-        .mode-btn.active[data-diff="easy"], .mode-btn.active[data-tab="easy"] {
+        .mode-btn.active[data-diff="easy"] {
             background: rgba(0, 255, 136, 0.25);
             border-color: var(--color-easy);
             color: var(--color-easy);
             box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
         }
-        .mode-btn.active[data-diff="medium"], .mode-btn.active[data-tab="medium"] {
+        .mode-btn.active[data-diff="medium"] {
             background: rgba(255, 215, 0, 0.25);
             border-color: var(--color-medium);
             color: var(--color-medium);
             box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
         }
-        .mode-btn.active[data-diff="hard"], .mode-btn.active[data-tab="hard"] {
+        .mode-btn.active[data-diff="hard"] {
             background: rgba(255, 68, 68, 0.25);
             border-color: var(--color-hard);
             color: var(--color-hard);
@@ -234,24 +234,6 @@
             backdrop-filter: blur(2px);
         }
 
-        .btn-reset {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            width: 100%;
-            margin-top: 15px;
-            padding: 12px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.2s ease;
-        }
-
-        .btn-reset:hover {
-            background: rgba(255, 255, 255, 0.2);
-            border-color: rgba(255, 255, 255, 0.4);
-        }
-
         .leaderboard-title {
             text-align: center;
             margin-top: 0;
@@ -315,7 +297,7 @@
             font-style: italic;
         }
         
-        #winModal, #confirmResetModal {
+        #winModal, #confirmResetModal, #confirmClearModal, #adminModal {
             display: none;
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -367,9 +349,37 @@
             margin-top: 0;
         }
 
+        /* Klasa dla ukrytego przycisku */
+        .secret-btn {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            width: 50px;
+            height: 50px;
+            background: transparent;
+            border: none;
+            outline: none;
+            cursor: default; /* Nie zmienia kursora na łapkę */
+            z-index: 9999;
+        }
+
+        .admin-list li {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 8px;
+        }
+
     </style>
 </head>
 <body data-theme="easy">
+
+    <!-- Ukryty przycisk do Panelu Admina -->
+    <button class="secret-btn" onclick="openAdminPanel()"></button>
 
     <div class="layout-wrapper">
         <!-- Główny panel gry -->
@@ -409,20 +419,11 @@
                 <button class="action-btn" id="btn-action-4" onclick="handleButtonClick(4)">Akcja 5</button>
                 <button class="action-btn" id="btn-action-5" onclick="handleButtonClick(5)">Akcja 6</button>
             </div>
-
-            <button class="btn-reset" onclick="promptReset()">Zresetuj planszę i czas</button>
         </div>
 
         <!-- Panel wyników -->
         <div class="leaderboard-container glass-panel">
             <h2 class="leaderboard-title">Najlepsze Czasy</h2>
-            
-            <!-- Zakładki wyników -->
-            <div class="controls-row">
-                <button class="mode-btn active" data-tab="easy" onclick="setLeaderboardTab('easy')">Łatwy</button>
-                <button class="mode-btn" data-tab="medium" onclick="setLeaderboardTab('medium')">Średni</button>
-                <button class="mode-btn" data-tab="hard" onclick="setLeaderboardTab('hard')">Trudny</button>
-            </div>
 
             <ul class="leaderboard-list" id="leaderboardList">
                 <!-- Wyniki generowane przez JS -->
@@ -434,7 +435,8 @@
     <div id="winModal">
         <div class="modal-content glass-panel">
             <h2>Zwycięstwo!</h2>
-            <p style="font-size: 1.2rem;">Twój czas: <strong id="finalTimeDisplay" style="color: var(--theme-color);">00:00.00</strong></p>
+            <p style="font-size: 1.2rem; margin: 10px 0 5px 0;">Twój czas: <strong id="finalTimeDisplay" style="color: var(--theme-color);">00:00.00</strong></p>
+            <p style="font-size: 1.1rem; margin: 5px 0 20px 0; color: rgba(255,255,255,0.8);">Wykonano ruchów: <strong id="finalMovesDisplay" style="color: white;">0</strong></p>
             <button onclick="resetGame()">Zagraj ponownie</button>
         </div>
     </div>
@@ -451,20 +453,145 @@
         </div>
     </div>
 
+    <!-- Okienko potwierdzenia ukrytego czyszczenia tablicy wyników -->
+    <div id="confirmClearModal">
+        <div class="modal-content glass-panel" style="border-color: rgba(255, 68, 68, 0.5); box-shadow: 0 8px 32px 0 rgba(255, 68, 68, 0.2);">
+            <h2 style="color: var(--color-hard); text-shadow: 0 0 15px rgba(255, 68, 68, 0.5);">Sekretny Reset</h2>
+            <p style="font-size: 1.1rem; margin-bottom: 20px;">Czy na pewno chcesz trwale usunąć wszystkie zapisane wyniki z bazy? Tej akcji nie można cofnąć.</p>
+            <div class="modal-buttons-row">
+                <button onclick="executeClear(false)" style="background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.3);">Anuluj</button>
+                <button onclick="executeClear(true)" style="background: rgba(255, 68, 68, 0.2); border-color: var(--color-hard); color: white;">Tak, usuń</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel Administratora -->
+    <div id="adminModal">
+        <div class="modal-content glass-panel" style="max-width: 500px; border-color: rgba(255, 255, 255, 0.4); box-shadow: 0 8px 32px 0 rgba(255, 255, 255, 0.2);">
+            <h2 style="color: white; text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);">Panel Administratora</h2>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <button onclick="closeAdminPanel(); promptReset();" style="background: rgba(255, 255, 255, 0.1); border-color: white; color: white; font-size: 1rem; padding: 10px;">Resetuj planszę gry</button>
+                <button onclick="promptClear()" style="background: rgba(255, 68, 68, 0.2); border-color: var(--color-hard); color: white; font-size: 1rem; padding: 10px;">Wyczyść LocalStorage</button>
+            </div>
+
+            <h3 style="color: rgba(255,255,255,0.8); text-align: left; margin: 0 0 10px 0; font-size: 1.1rem;">Zarządzaj rekordami:</h3>
+            
+            <ul class="leaderboard-list admin-list" id="adminLeaderboardList" style="max-height: 250px; margin-bottom: 20px;">
+                <!-- Wyniki generowane przez JS -->
+            </ul>
+
+            <button onclick="closeAdminPanel()" style="background: rgba(255, 255, 255, 0.2); border-color: white; color: white; width: 100%;">Zamknij Panel</button>
+        </div>
+    </div>
+
     <script>
         // Stan gry
         let currentDifficulty = 'easy';
-        let currentLeaderboardTab = 'easy';
         let dotStates = Array(9).fill(false);
         let isWon = false;
         let lastClickedButton = -1; 
         let buttonMappings = [];
+        let clickCount = 0; // Zmienna śledząca ilość ruchów gracza
 
         // Zmienne stopera
         let startTime = 0;
         let timerInterval = null;
         let isTimerRunning = false;
         let finalTimeMs = 0;
+
+        // --- UKRYTY RESET WYNIKÓW ---
+        function promptClear() {
+            document.getElementById('confirmClearModal').style.display = 'flex';
+        }
+
+        function executeClear(confirmed) {
+            document.getElementById('confirmClearModal').style.display = 'none';
+            if (confirmed) {
+                clearAllScores();
+            }
+        }
+
+        function clearAllScores() {
+            localStorage.removeItem('logicGameScoresNew');
+            renderLeaderboard();
+            renderAdminLeaderboard(); // Odświeża listę w panelu admina po czyszczeniu
+            
+            // Dyskretna informacja o powodzeniu akcji
+            const statusText = document.getElementById('statusText');
+            const originalText = statusText.innerText;
+            const originalColor = statusText.style.color;
+            
+            statusText.innerText = "Zresetowano zapisy (Sekret)";
+            statusText.style.color = "rgba(255, 255, 255, 0.5)";
+            
+            setTimeout(() => {
+                if (!isTimerRunning && !isWon) {
+                    statusText.innerText = "Wybierz poziom i zacznij klikać";
+                    statusText.style.color = "rgba(255, 255, 255, 0.8)";
+                } else {
+                    statusText.innerText = originalText;
+                    statusText.style.color = originalColor;
+                }
+            }, 2500);
+        }
+
+        // --- PANEL ADMINISTRATORA ---
+        function openAdminPanel() {
+            document.getElementById('adminModal').style.display = 'flex';
+            renderAdminLeaderboard();
+        }
+
+        function closeAdminPanel() {
+            document.getElementById('adminModal').style.display = 'none';
+        }
+
+        function renderAdminLeaderboard() {
+            try {
+                let allScores = JSON.parse(localStorage.getItem('logicGameScoresNew') || '[]');
+                const listEl = document.getElementById('adminLeaderboardList');
+                
+                if (allScores.length === 0) {
+                    listEl.innerHTML = '<div class="no-scores" style="margin-top: 10px; margin-bottom: 10px;">Baza wyników jest pusta.</div>';
+                    return;
+                }
+
+                let html = '';
+                allScores.forEach((score, index) => {
+                    let diffLabel = score.difficulty === 'easy' ? 'Łatwy' : (score.difficulty === 'medium' ? 'Średni' : 'Trudny');
+                    let diffColor = score.difficulty === 'easy' ? 'var(--color-easy)' : (score.difficulty === 'medium' ? 'var(--color-medium)' : 'var(--color-hard)');
+                    let movesText = (score.moves !== undefined) ? `${score.moves} ruchów` : 'brak danych';
+                    
+                    html += `
+                        <li>
+                            <div style="text-align: left; line-height: 1.4;">
+                                <span style="color: ${diffColor}; font-weight: bold; font-size: 0.9rem;">[${diffLabel}]</span>
+                                <span style="font-family: monospace; font-weight: bold;">${score.formatted}</span><br>
+                                <span style="font-size: 0.8rem; color: rgba(255,255,255,0.6);">${movesText} | ${score.date}</span>
+                            </div>
+                            <button onclick="deleteSingleRecord(${index})" style="background: rgba(255,68,68,0.3); border: 1px solid #FF4444; color: white; border-radius: 8px; cursor: pointer; padding: 6px 12px; width: auto; min-width: unset; font-size: 0.9rem; margin-top: 0;">Usuń</button>
+                        </li>
+                    `;
+                });
+                listEl.innerHTML = html;
+            } catch (e) {
+                console.error("Błąd odczytu z LocalStorage (Admin)", e);
+            }
+        }
+
+        function deleteSingleRecord(index) {
+            try {
+                let allScores = JSON.parse(localStorage.getItem('logicGameScoresNew') || '[]');
+                allScores.splice(index, 1);
+                localStorage.setItem('logicGameScoresNew', JSON.stringify(allScores));
+                
+                // Odświeżamy oba widoki (panel admina oraz tablicę na ekranie głównym)
+                renderAdminLeaderboard();
+                renderLeaderboard();
+            } catch (e) {
+                console.error("Błąd usuwania rekordu", e);
+            }
+        }
 
         // --- GENEROWANIE LOGIKI ---
         // Algorytm dla losowego poziomu Trudnego (zawsze możliwy do rozwiązania)
@@ -540,22 +667,11 @@
                 btn.classList.toggle('active', btn.getAttribute('data-diff') === diff);
             });
 
-            // Automatyczne przełączenie zakładki wyników
-            setLeaderboardTab(diff);
+            // Automatyczne przełączenie tablicy wyników
+            renderLeaderboard();
 
             // Wyzerowanie
             resetGame();
-        }
-
-        function setLeaderboardTab(tab) {
-            currentLeaderboardTab = tab;
-            
-            // Uaktualnienie UI zakładek
-            document.querySelectorAll('.mode-btn[data-tab]').forEach(btn => {
-                btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
-            });
-
-            renderLeaderboard();
         }
 
         // --- STOPER ---
@@ -596,6 +712,9 @@
             if (isWon) return; 
             if (buttonIndex === lastClickedButton) return; 
 
+            // Dodanie ruchu gracza do licznika
+            clickCount++;
+
             if (!isTimerRunning) {
                 startTimer();
                 document.getElementById('statusText').innerText = "Rozwiązuj układ...";
@@ -632,13 +751,15 @@
             if (dotStates.every(state => state === true)) {
                 isWon = true;
                 stopTimer();
-                saveScore(finalTimeMs, currentDifficulty);
+                saveScore(finalTimeMs, currentDifficulty, clickCount);
                 
                 const statusText = document.getElementById('statusText');
                 statusText.innerText = "Udało się! Zwycięstwo!";
                 statusText.style.color = "var(--theme-color)";
 
                 document.getElementById('finalTimeDisplay').innerText = formatTime(finalTimeMs);
+                document.getElementById('finalMovesDisplay').innerText = clickCount;
+                
                 setTimeout(() => {
                     document.getElementById('winModal').style.display = 'flex';
                 }, 400);
@@ -662,6 +783,8 @@
             isWon = false;
             isTimerRunning = false;
             lastClickedButton = -1; 
+            clickCount = 0; // Wyzerowanie licznika ruchów
+            
             clearInterval(timerInterval);
             resetTimerDisplay();
             dotStates = Array(9).fill(false);
@@ -682,7 +805,7 @@
         }
 
         // --- TABELA WYNIKÓW (LocalStorage) ---
-        function saveScore(timeMs, diff) {
+        function saveScore(timeMs, diff, moves) {
             try {
                 let scores = JSON.parse(localStorage.getItem('logicGameScoresNew') || '[]');
                 
@@ -693,7 +816,8 @@
                     time: timeMs,
                     formatted: formatTime(timeMs),
                     date: dateStr,
-                    difficulty: diff // Zapisujemy poziom trudności!
+                    difficulty: diff, // Zapisujemy poziom trudności
+                    moves: moves // Zapisujemy ilość ruchów
                 });
 
                 scores.sort((a, b) => a.time - b.time);
@@ -708,8 +832,8 @@
             try {
                 let allScores = JSON.parse(localStorage.getItem('logicGameScoresNew') || '[]');
                 
-                // Filtrowanie czasów po aktywnej zakładce (stare wyniki z poprzednich wersji uznajemy za zepsute/brak trudności, używam nowej nazwy klucza 'logicGameScoresNew' aby zacząć od zera)
-                let filteredScores = allScores.filter(s => s.difficulty === currentLeaderboardTab);
+                // Filtrowanie czasów po aktywnym poziomie trudności
+                let filteredScores = allScores.filter(s => s.difficulty === currentDifficulty);
                 
                 const listEl = document.getElementById('leaderboardList');
                 
@@ -718,16 +842,24 @@
                     return;
                 }
 
-                // Przypisanie koloru czasu bazującego na aktywnej zakładce
-                let timeColor = `var(--color-${currentLeaderboardTab})`;
+                // Przypisanie koloru czasu bazującego na aktywnym poziomie trudności
+                let timeColor = `var(--color-${currentDifficulty})`;
 
                 let html = '';
                 filteredScores.forEach((score, index) => {
+                    // Kompatybilność wsteczna z zapisami, które nie miały licznika ruchów
+                    let movesText = (score.moves !== undefined) ? `${score.moves} ruchów` : 'brak danych';
+                    
                     html += `
                         <li>
-                            <span style="opacity: 0.8;">#${index + 1}</span>
-                            <span class="time" style="color: ${timeColor};">${score.formatted}</span>
-                            <span class="date">${score.date}</span>
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <span style="opacity: 0.8;">#${index + 1}</span>
+                                <span class="time" style="color: ${timeColor};">${score.formatted}</span>
+                            </div>
+                            <div style="text-align: right; display: flex; flex-direction: column; gap: 4px;">
+                                <span style="font-size: 0.85rem; color: rgba(255,255,255,0.9);">${movesText}</span>
+                                <span class="date">${score.date}</span>
+                            </div>
                         </li>
                     `;
                 });
