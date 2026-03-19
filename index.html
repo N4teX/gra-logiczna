@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gra Logiczna - Liquid Glass</title>
+    <style>
+        /* Zmienne kolorystyczne dla poziomów trudności */
+        :root {
+            --color-easy: #00FF88;
+            --color-easy-rgb: 0, 255, 136;
+            
+            --color-medium: #FFD700;
+            --color-medium-rgb: 255, 215, 0;
+            
+            --color-hard: #FF4444;
+            --color-hard-rgb: 255, 68, 68;
+
+            /* Domyślnie ładuje się łatwy */
+            --theme-color: var(--color-easy);
+            --theme-rgb: var(--color-easy-rgb);
+        }
+
+        body[data-theme="medium"] {
+            --theme-color: var(--color-medium);
+            --theme-rgb: var(--color-medium-rgb);
+        }
+
+        body[data-theme="hard"] {
+            --theme-color: var(--color-hard);
+            --theme-rgb: var(--color-hard-rgb);
+        }
+
+        /* Animowane, dynamiczne tło */
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            color: #FFFFFF;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: --theme-color 0.5s ease;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .layout-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            width: 100%;
+            max-width: 1100px;
+            padding: 20px;
+            box-sizing: border-box;
+            justify-content: center;
+            align-items: stretch;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 24px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            box-sizing: border-box;
+        }
+
+        .game-container {
+            flex: 1 1 400px;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .leaderboard-container {
+            flex: 1 1 300px;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            margin: 0 0 5px 0;
+            font-size: clamp(1.5rem, 5vw, 2.2rem);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .status {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.1rem;
+            margin: 0;
+            min-height: 1.5em;
+        }
+
+        /* Kontrolki trudności i zakładki */
+        .controls-row {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .mode-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            font-size: 0.9rem;
+        }
+
+        .mode-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Aktywne style dla zakładek / poziomów */
+        .mode-btn.active[data-diff="easy"], .mode-btn.active[data-tab="easy"] {
+            background: rgba(0, 255, 136, 0.25);
+            border-color: var(--color-easy);
+            color: var(--color-easy);
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+        }
+        .mode-btn.active[data-diff="medium"], .mode-btn.active[data-tab="medium"] {
+            background: rgba(255, 215, 0, 0.25);
+            border-color: var(--color-medium);
+            color: var(--color-medium);
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+        .mode-btn.active[data-diff="hard"], .mode-btn.active[data-tab="hard"] {
+            background: rgba(255, 68, 68, 0.25);
+            border-color: var(--color-hard);
+            color: var(--color-hard);
+            box-shadow: 0 0 10px rgba(255, 68, 68, 0.3);
+        }
+
+        .timer {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 5px 0 20px 0;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            letter-spacing: 2px;
+            color: var(--theme-color);
+        }
+
+        .dots-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15%;
+            width: 70%;
+            max-width: 350px;
+            margin: 0 auto 30px auto;
+            aspect-ratio: 1; 
+        }
+
+        .dot {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            aspect-ratio: 1; 
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: inset 0 3px 8px rgba(0,0,0,0.5);
+        }
+
+        .dot.active {
+            background: rgba(var(--theme-rgb), 0.85);
+            border-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 25px rgba(var(--theme-rgb), 0.8), inset 0 0 15px rgba(255, 255, 255, 0.6);
+            transform: scale(1.05);
+        }
+
+        .buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: auto;
+        }
+
+        .action-btn {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: clamp(12px, 3vh, 18px) 5px;
+            font-size: clamp(0.9rem, 2vw, 1.1rem);
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+            backdrop-filter: blur(5px);
+        }
+
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .action-btn:active {
+            transform: translateY(1px) scale(0.95);
+        }
+
+        .action-btn:disabled {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.1);
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+            backdrop-filter: blur(2px);
+        }
+
+        .btn-reset {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            width: 100%;
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+
+        .btn-reset:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .leaderboard-title {
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .leaderboard-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .leaderboard-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .leaderboard-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+        .leaderboard-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+        .leaderboard-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .leaderboard-list li {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 12px 15px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 1.1rem;
+        }
+
+        .leaderboard-list li .time {
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+        }
+
+        .leaderboard-list li .date {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .no-scores {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 20px;
+            font-style: italic;
+        }
+        
+        #winModal, #confirmResetModal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        
+        .modal-content {
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            border-color: rgba(var(--theme-rgb), 0.5);
+            box-shadow: 0 8px 32px 0 rgba(var(--theme-rgb), 0.2);
+        }
+
+        .modal-content h2 {
+            color: var(--theme-color);
+            font-size: 2.5rem;
+            margin-top: 0;
+            text-shadow: 0 0 15px rgba(var(--theme-rgb), 0.5);
+        }
+        
+        .modal-content button {
+            margin-top: 25px;
+            background: rgba(var(--theme-rgb), 0.2);
+            border: 1px solid var(--theme-color);
+            color: white;
+            font-size: 1.2rem;
+            padding: 15px 30px;
+            width: 100%;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .modal-content button:hover {
+            background: rgba(var(--theme-rgb), 0.4);
+        }
+
+        .modal-buttons-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-buttons-row button {
+            margin-top: 0;
+        }
+
+    </style>
+</head>
+<body data-theme="easy">
+
+    <div class="layout-wrapper">
+        <!-- Główny panel gry -->
+        <div class="game-container glass-panel">
+            <div class="header">
+                <h1>Gra Logiczna</h1>
+                <p id="statusText" class="status">Wybierz poziom i zacznij klikać</p>
+            </div>
+
+            <!-- Przełącznik poziomu trudności -->
+            <div class="controls-row">
+                <button class="mode-btn active" data-diff="easy" onclick="setDifficulty('easy')">Łatwy</button>
+                <button class="mode-btn" data-diff="medium" onclick="setDifficulty('medium')">Średni</button>
+                <button class="mode-btn" data-diff="hard" onclick="setDifficulty('hard')">Trudny</button>
+            </div>
+
+            <div class="timer" id="timerDisplay">00:00.00</div>
+
+            <div class="dots-grid">
+                <!-- Wygenerowanie 9 kropek -->
+                <div class="dot" id="dot-0"></div>
+                <div class="dot" id="dot-1"></div>
+                <div class="dot" id="dot-2"></div>
+                <div class="dot" id="dot-3"></div>
+                <div class="dot" id="dot-4"></div>
+                <div class="dot" id="dot-5"></div>
+                <div class="dot" id="dot-6"></div>
+                <div class="dot" id="dot-7"></div>
+                <div class="dot" id="dot-8"></div>
+            </div>
+
+            <div class="buttons-grid">
+                <button class="action-btn" id="btn-action-0" onclick="handleButtonClick(0)">Akcja 1</button>
+                <button class="action-btn" id="btn-action-1" onclick="handleButtonClick(1)">Akcja 2</button>
+                <button class="action-btn" id="btn-action-2" onclick="handleButtonClick(2)">Akcja 3</button>
+                <button class="action-btn" id="btn-action-3" onclick="handleButtonClick(3)">Akcja 4</button>
+                <button class="action-btn" id="btn-action-4" onclick="handleButtonClick(4)">Akcja 5</button>
+                <button class="action-btn" id="btn-action-5" onclick="handleButtonClick(5)">Akcja 6</button>
+            </div>
+
+            <button class="btn-reset" onclick="promptReset()">Zresetuj planszę i czas</button>
+        </div>
+
+        <!-- Panel wyników -->
+        <div class="leaderboard-container glass-panel">
+            <h2 class="leaderboard-title">Najlepsze Czasy</h2>
+            
+            <!-- Zakładki wyników -->
+            <div class="controls-row">
+                <button class="mode-btn active" data-tab="easy" onclick="setLeaderboardTab('easy')">Łatwy</button>
+                <button class="mode-btn" data-tab="medium" onclick="setLeaderboardTab('medium')">Średni</button>
+                <button class="mode-btn" data-tab="hard" onclick="setLeaderboardTab('hard')">Trudny</button>
+            </div>
+
+            <ul class="leaderboard-list" id="leaderboardList">
+                <!-- Wyniki generowane przez JS -->
+            </ul>
+        </div>
+    </div>
+
+    <!-- Okienko wygranej -->
+    <div id="winModal">
+        <div class="modal-content glass-panel">
+            <h2>Zwycięstwo!</h2>
+            <p style="font-size: 1.2rem;">Twój czas: <strong id="finalTimeDisplay" style="color: var(--theme-color);">00:00.00</strong></p>
+            <button onclick="resetGame()">Zagraj ponownie</button>
+        </div>
+    </div>
+
+    <!-- Okienko potwierdzenia resetu -->
+    <div id="confirmResetModal">
+        <div class="modal-content glass-panel" style="border-color: rgba(255, 68, 68, 0.5); box-shadow: 0 8px 32px 0 rgba(255, 68, 68, 0.2);">
+            <h2 style="color: var(--color-hard); text-shadow: 0 0 15px rgba(255, 68, 68, 0.5);">Uwaga!</h2>
+            <p style="font-size: 1.1rem; margin-bottom: 20px;">Czy na pewno chcesz zresetować planszę? Bieżący czas i postęp przepadną.</p>
+            <div class="modal-buttons-row">
+                <button onclick="executeReset(false)" style="background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.3);">Anuluj</button>
+                <button onclick="executeReset(true)" style="background: rgba(255, 68, 68, 0.2); border-color: var(--color-hard); color: white;">Tak, resetuj</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Stan gry
+        let currentDifficulty = 'easy';
+        let currentLeaderboardTab = 'easy';
+        let dotStates = Array(9).fill(false);
+        let isWon = false;
+        let lastClickedButton = -1; 
+        let buttonMappings = [];
+
+        // Zmienne stopera
+        let startTime = 0;
+        let timerInterval = null;
+        let isTimerRunning = false;
+        let finalTimeMs = 0;
+
+        // --- GENEROWANIE LOGIKI ---
+        // Algorytm dla losowego poziomu Trudnego (zawsze możliwy do rozwiązania)
+        function generateRandomSolvableMappings() {
+            let mappings = [[], [], [], [], [], []];
+            let allButtons = [0, 1, 2, 3, 4, 5].sort(() => Math.random() - 0.5);
+            let solutionSize = Math.floor(Math.random() * 3) + 3; // 3, 4 lub 5 kliknięć by wygrać
+            let solutionButtons = allButtons.slice(0, solutionSize);
+            let otherButtons = allButtons.slice(solutionSize);
+
+            for (let dot = 0; dot < 9; dot++) {
+                let possibleK = [];
+                for (let k = 1; k <= solutionSize; k += 2) possibleK.push(k);
+                let k = possibleK[Math.floor(Math.random() * possibleK.length)];
+                
+                let shuffledSolution = [...solutionButtons].sort(() => Math.random() - 0.5);
+                let selectedForDot = shuffledSolution.slice(0, k);
+                
+                selectedForDot.forEach(btn => mappings[btn].push(dot));
+
+                otherButtons.forEach(btn => {
+                    if (Math.random() > 0.5) mappings[btn].push(dot);
+                });
+            }
+            mappings.forEach(arr => arr.sort((a,b) => a-b));
+            return mappings.map(arr => [...new Set(arr)]);
+        }
+
+        // Pobieranie mapowań wg poziomu
+        function getMappingsForDifficulty(diff) {
+            if (diff === 'easy') {
+                // Łatwy: proste rzędy i kolumny (Logiczne)
+                return [
+                    [0, 1, 2], // Wiersz górny
+                    [3, 4, 5], // Wiersz środkowy
+                    [6, 7, 8], // Wiersz dolny
+                    [0, 3, 6], // Kolumna lewa
+                    [1, 4, 7], // Kolumna środkowa
+                    [2, 5, 8]  // Kolumna prawa
+                ];
+            } else if (diff === 'medium') {
+                // Średni: symetryczne bloki, krzyż i rogi (Lekko pomieszane)
+                // Ułożenie przemyślane tak, by dało się je zapalić na 100% (akcje 0,1,2,3,4 rozwiązują grę)
+                return [
+                    [0, 1, 3, 4],    // Lewy-górny kwadrat 2x2
+                    [1, 2, 4, 5],    // Prawy-górny kwadrat 2x2
+                    [3, 4, 6, 7],    // Lewy-dolny kwadrat 2x2
+                    [4, 5, 7, 8],    // Prawy-dolny kwadrat 2x2
+                    [1, 3, 4, 5, 7], // Krzyż na środku
+                    [0, 2, 6, 8]     // 4 Rogi
+                ];
+            } else {
+                // Trudny: totalnie losowe (ale do rozwiązania)
+                return generateRandomSolvableMappings();
+            }
+        }
+
+        // Inicjalizacja przy ładowaniu
+        window.onload = () => {
+            setDifficulty('easy'); // Inicjuje planszę i tło
+            renderLeaderboard();
+        };
+
+        // --- ZMIANA TRUDNOŚCI ---
+        function setDifficulty(diff) {
+            currentDifficulty = diff;
+            
+            // Uaktualnienie CSS/Tła
+            document.body.setAttribute('data-theme', diff);
+            
+            // Uaktualnienie przycisków
+            document.querySelectorAll('.mode-btn[data-diff]').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-diff') === diff);
+            });
+
+            // Automatyczne przełączenie zakładki wyników
+            setLeaderboardTab(diff);
+
+            // Wyzerowanie
+            resetGame();
+        }
+
+        function setLeaderboardTab(tab) {
+            currentLeaderboardTab = tab;
+            
+            // Uaktualnienie UI zakładek
+            document.querySelectorAll('.mode-btn[data-tab]').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
+            });
+
+            renderLeaderboard();
+        }
+
+        // --- STOPER ---
+        function formatTime(ms) {
+            let date = new Date(ms);
+            let m = String(date.getMinutes()).padStart(2, '0');
+            let s = String(date.getSeconds()).padStart(2, '0');
+            let msPart = String(Math.floor(date.getMilliseconds() / 10)).padStart(2, '0');
+            return `${m}:${s}.${msPart}`;
+        }
+
+        function startTimer() {
+            if (!isTimerRunning) {
+                startTime = Date.now();
+                isTimerRunning = true;
+                timerInterval = setInterval(() => {
+                    let elapsed = Date.now() - startTime;
+                    document.getElementById('timerDisplay').innerText = formatTime(elapsed);
+                }, 10);
+            }
+        }
+
+        function stopTimer() {
+            if (isTimerRunning) {
+                clearInterval(timerInterval);
+                isTimerRunning = false;
+                finalTimeMs = Date.now() - startTime;
+                document.getElementById('timerDisplay').innerText = formatTime(finalTimeMs);
+            }
+        }
+
+        function resetTimerDisplay() {
+            document.getElementById('timerDisplay').innerText = "00:00.00";
+        }
+
+        // --- LOGIKA GRY ---
+        function handleButtonClick(buttonIndex) {
+            if (isWon) return; 
+            if (buttonIndex === lastClickedButton) return; 
+
+            if (!isTimerRunning) {
+                startTimer();
+                document.getElementById('statusText').innerText = "Rozwiązuj układ...";
+            }
+
+            const dotsToToggle = buttonMappings[buttonIndex];
+
+            dotsToToggle.forEach(dotIndex => {
+                dotStates[dotIndex] = !dotStates[dotIndex];
+                
+                const dotElement = document.getElementById(`dot-${dotIndex}`);
+                if (dotStates[dotIndex]) {
+                    dotElement.classList.add('active');
+                } else {
+                    dotElement.classList.remove('active');
+                }
+            });
+
+            lastClickedButton = buttonIndex;
+            updateButtonsUI();
+            checkWinCondition();
+        }
+
+        function updateButtonsUI() {
+            for (let i = 0; i < 6; i++) {
+                const btn = document.getElementById(`btn-action-${i}`);
+                if (btn) {
+                    btn.disabled = (i === lastClickedButton);
+                }
+            }
+        }
+
+        function checkWinCondition() {
+            if (dotStates.every(state => state === true)) {
+                isWon = true;
+                stopTimer();
+                saveScore(finalTimeMs, currentDifficulty);
+                
+                const statusText = document.getElementById('statusText');
+                statusText.innerText = "Udało się! Zwycięstwo!";
+                statusText.style.color = "var(--theme-color)";
+
+                document.getElementById('finalTimeDisplay').innerText = formatTime(finalTimeMs);
+                setTimeout(() => {
+                    document.getElementById('winModal').style.display = 'flex';
+                }, 400);
+            }
+        }
+
+        function promptReset() {
+            // Pokazujemy okienko modalne potwierdzające reset
+            document.getElementById('confirmResetModal').style.display = 'flex';
+        }
+
+        function executeReset(confirmed) {
+            // Chowamy okienko i jeśli gracz kliknął "Tak", wykonujemy faktyczny reset
+            document.getElementById('confirmResetModal').style.display = 'none';
+            if (confirmed) {
+                resetGame();
+            }
+        }
+
+        function resetGame() {
+            isWon = false;
+            isTimerRunning = false;
+            lastClickedButton = -1; 
+            clearInterval(timerInterval);
+            resetTimerDisplay();
+            dotStates = Array(9).fill(false);
+            
+            // Pobierz nową logikę w zależności od trudności
+            buttonMappings = getMappingsForDifficulty(currentDifficulty);
+
+            const statusText = document.getElementById('statusText');
+            statusText.innerText = "Wybierz poziom i zacznij klikać";
+            statusText.style.color = "rgba(255, 255, 255, 0.8)";
+
+            for (let i = 0; i < 9; i++) {
+                document.getElementById(`dot-${i}`).classList.remove('active');
+            }
+            
+            updateButtonsUI();
+            document.getElementById('winModal').style.display = 'none';
+        }
+
+        // --- TABELA WYNIKÓW (LocalStorage) ---
+        function saveScore(timeMs, diff) {
+            try {
+                let scores = JSON.parse(localStorage.getItem('logicGameScoresNew') || '[]');
+                
+                let now = new Date();
+                let dateStr = `${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth()+1).padStart(2, '0')}.${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+                scores.push({
+                    time: timeMs,
+                    formatted: formatTime(timeMs),
+                    date: dateStr,
+                    difficulty: diff // Zapisujemy poziom trudności!
+                });
+
+                scores.sort((a, b) => a.time - b.time);
+                localStorage.setItem('logicGameScoresNew', JSON.stringify(scores));
+                renderLeaderboard();
+            } catch (e) {
+                console.error("Błąd zapisu do LocalStorage", e);
+            }
+        }
+
+        function renderLeaderboard() {
+            try {
+                let allScores = JSON.parse(localStorage.getItem('logicGameScoresNew') || '[]');
+                
+                // Filtrowanie czasów po aktywnej zakładce (stare wyniki z poprzednich wersji uznajemy za zepsute/brak trudności, używam nowej nazwy klucza 'logicGameScoresNew' aby zacząć od zera)
+                let filteredScores = allScores.filter(s => s.difficulty === currentLeaderboardTab);
+                
+                const listEl = document.getElementById('leaderboardList');
+                
+                if (filteredScores.length === 0) {
+                    listEl.innerHTML = '<div class="no-scores">Brak zapisanych wyników.<br>Zagraj, aby ustanowić rekord!</div>';
+                    return;
+                }
+
+                // Przypisanie koloru czasu bazującego na aktywnej zakładce
+                let timeColor = `var(--color-${currentLeaderboardTab})`;
+
+                let html = '';
+                filteredScores.forEach((score, index) => {
+                    html += `
+                        <li>
+                            <span style="opacity: 0.8;">#${index + 1}</span>
+                            <span class="time" style="color: ${timeColor};">${score.formatted}</span>
+                            <span class="date">${score.date}</span>
+                        </li>
+                    `;
+                });
+                listEl.innerHTML = html;
+            } catch (e) {
+                console.error("Błąd odczytu z LocalStorage", e);
+            }
+        }
+    </script>
+</body>
+</html>
